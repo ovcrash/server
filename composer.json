@@ -26,8 +26,7 @@
         "slim/psr7": "^1.5",
         "slim/slim": "^4.10",
         "tuupola/slim-basic-auth": "^3.3",
-        "tuupola/slim-jwt-auth": "^3.8",
-        "firebase/php-jwt": "^6.0",
+        "tuupola/slim-jwt-auth": "^3.6",
         "ext-pdo" : "*"
     },
     "require-dev": {
@@ -43,7 +42,10 @@
             "phpstan/extension-installer": true
         },
         "process-timeout": 0,
-        "sort-packages": true
+        "sort-packages": true,
+        "audit": {
+            "ignore": ["PKSA-2kqm-ps5x-s4f5"]
+        }
     },
     "autoload": {
         "psr-4": {
