@@ -185,24 +185,41 @@ class TokenAsParameterMiddleware implements MiddlewareInterface
 }
 
 
-/* FIXME: CORS wildcard hack should require proper implementation and validation */
-/* This middleware will append the response header Access-Control-Allow-Methods with all allowed methods */
+/* CORS middleware - handles preflight OPTIONS requests and adds CORS headers */
 class CorsHackMiddleware implements MiddlewareInterface 
 {
     public function process(Request $request, RequestHandler $handler): Response {
-        $routeContext = RouteContext::fromRequest($request);
-        $routingResults = $routeContext->getRoutingResults();
-        $methods = $routingResults->getAllowedMethods();
-        $requestHeaders = $request->getHeaderLine('Access-Control-Request-Headers');
-    
+        // Handle preflight OPTIONS requests immediately
+        if ($request->getMethod() === 'OPTIONS') {
+            $response = new Response();
+            $requestHeaders = $request->getHeaderLine('Access-Control-Request-Headers');
+            
+            return $response
+                ->withHeader('Access-Control-Allow-Origin', '*')
+                ->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+                ->withHeader('Access-Control-Allow-Headers', $requestHeaders ?: 'Content-Type, Authorization')
+                ->withHeader('Access-Control-Max-Age', '86400')
+                ->withStatus(200);
+        }
+
+        // For non-OPTIONS requests, continue to the next handler
         $response = $handler->handle($request);
     
         $response = $response->withHeader('Access-Control-Allow-Origin', '*');
-        $response = $response->withHeader('Access-Control-Allow-Methods', implode(',', $methods));
-        $response = $response->withHeader('Access-Control-Allow-Headers', $requestHeaders);
+        
+        // Try to get allowed methods from routing context
+        try {
+            $routeContext = RouteContext::fromRequest($request);
+            $routingResults = $routeContext->getRoutingResults();
+            $methods = $routingResults->getAllowedMethods();
+            $response = $response->withHeader('Access-Control-Allow-Methods', implode(',', $methods));
+        } catch (\Exception $e) {
+            $response = $response->withHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        }
+        
+        $requestHeaders = $request->getHeaderLine('Access-Control-Request-Headers');
+        $response = $response->withHeader('Access-Control-Allow-Headers', $requestHeaders ?: 'Content-Type, Authorization');
     
-        // Optional: Allow Ajax CORS requests with Authorization header
-        // $response = $response->withHeader('Access-Control-Allow-Credentials', 'true');
         return $response;
     }
 }
